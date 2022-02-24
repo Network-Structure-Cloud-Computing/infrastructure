@@ -12,9 +12,11 @@ Created an vpc, subnets, internet gateway, routes, and route table using aws clo
 * Clone the repository into your local machine using git clone command.
 * Go to your project folder using cd
 * Make a parameter.json file for configuration of the infra in which you want to build all your resources.
-* Write command ```aws --profile=[env name] cloudformation create-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to create stack and start the creation of the resources in aws
-* Write command ```aws --profile=[env name] cloudformation update-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to update exit stack and its resources
-* Write command ```aws --profile=[env name] cloudformation delete-stack --stack-name [stack name] ``` to delete the stack and its resources
+* Set ``export AWS_PROFILE=dev/demo`` or it can be any environment of your choice  
+* Set ``export AWS_REGION=us-east-1`` or it can be any region of your choice
+* Write command ```aws cloudformation create-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to create stack and start the creation of the resources in aws
+* Write command ```aws cloudformation update-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to update exit stack and its resources
+* Write command ```aws cloudformation delete-stack --stack-name [stack name] ``` to delete the stack and its resources
   
 ## Project Structure
 * *csye6225-infra.yml* : It has it's logic to create vpc, subnets, internet gateways, routes, route table, and attachment.
