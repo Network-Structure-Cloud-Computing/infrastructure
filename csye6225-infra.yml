@@ -3,6 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: Assignment 3
 
+# Parameters Reference for the Template
 Parameters:
   VpcCidrBlock:
     Description: "CIDR block for VPC"
@@ -34,6 +35,8 @@ Parameters:
     Default: "0.0.0.0/0"
 
 Resources:
+
+# Create VPC
   MyVPC:
     Type: AWS::EC2::VPC
     Properties: 
@@ -45,6 +48,7 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} - MyVPC
 
+# Create Internet GateWay
   InternetGateWay:
     Type: AWS::EC2::InternetGateway
     Properties: 
@@ -52,12 +56,14 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} - InternetGateWay
 
+# Create Attachment between VPC and Gateway
   InternetGateWayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties: 
       InternetGatewayId: !Ref InternetGateWay
       VpcId: !Ref MyVPC
 
+# Create Public Route Table
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties: 
@@ -66,6 +72,7 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} - PublicRouteTable
 
+# Create Public Route
   PublicRoute:
     Type: AWS::EC2::Route
     Properties: 
@@ -73,6 +80,7 @@ Resources:
       DestinationCidrBlock: !Ref DestinationCidrBlockPublic
       GatewayId: !Ref InternetGateWay
 
+# Create Subnet and Attachment of Subnet with Route Table
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -124,6 +132,7 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet3
 
+# Output Data
 Outputs:
   VpcId:
     Description: "VPC ID"
@@ -148,7 +157,7 @@ Outputs:
   PublicRouteTable:
       Description: Public Route Table
       Value: !Ref PublicRouteTable
-      
+
   InternetGateWay:
       Description: Internet GateWay
       Value: !Ref InternetGateWay
