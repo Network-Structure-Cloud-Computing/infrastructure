@@ -1,1 +1,27 @@
-# infrastructure
+# Infrastructure
+``CloudFormation - AWS``
+
+## About the project
+Created an vpc, subnets, internet gateway, routes, and route table using aws cloudformation
+
+## How To Run
+* Install and configure AWS Command Line Interface (CLI) on your development machine (laptop) from AWS Website.
+* Create AWS CLI user profiles in dev and demo account. Create secret key and download the csv file.
+* Create dev profile for your dev AWS account and demo profile for your production AWS account.
+* Both dev and demo AWS CLI profiles should be set to use the ``us-east-1`` region or the region closest to you.
+* Clone the repository into your local machine using git clone command.
+* Go to your project folder using cd
+* Make a parameter.json file for configuration of the infra in which you want to build all your resources.
+* Write command ```aws --profile=[env name] cloudformation create-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to create stack and start the creation of the resources in aws
+* Write command ```aws --profile=[env name] cloudformation update-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json``` to update exit stack and its resources
+* Write command ```aws --profile=[env name] cloudformation delete-stack --stack-name [stack name] ``` to delete the stack and its resources
+  
+## Project Structure
+* *csye6225-infra.yml* : It has it's logic to create vpc, subnets, internet gateways, routes, route table, and attachment.
+  
+## Teach Stack
+* AWS CloudFormation
+* AWS CLI
+
+## Features
+* Create, Update, and Delete stack and its resources using cloud formation
