@@ -510,8 +510,7 @@ Resources:
               export S3_BUCKET=${S3Bucket}
               export PORT=${PortNo}
               export AWS_REGION=${region}
-              sleep 10
-              sudo systemctl restart nodeApi.service
+              sudo systemctl start nodeApi.service
               EOF
             - {
                 DatabaseName: !Ref DatabaseName,
