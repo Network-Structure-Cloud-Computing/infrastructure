@@ -205,6 +205,146 @@ Parameters:
     Type: "String"
     Default: "us-east-1"
 
+  CooldownPeriod:
+    Description: "Cool Down"
+    Type: "String"
+    Default: "60"
+
+  EvaluationPeriods:
+    Description: "Evaluation Periods"
+    Type: "String"
+    Default: "2"
+
+  Period:
+    Description: "Period"
+    Type: "String"
+    Default: "60"
+
+  Namespace:
+    Description: "Namespace"
+    Type: "String"
+    Default: "AWS/EC2"
+
+  MetricName:
+    Description: "Metric Name"
+    Type: "String"
+    Default: "CPUUtilization"
+
+  Statistic:
+    Description: "Statistic"
+    Type: "String"
+    Default: "Average"
+
+  AdjustmentType:
+    Description: "Adjustment Type"
+    Type: "String"
+    Default: "ChangeInCapacity"
+
+  LoadDownCond:
+    Description: "Load Down Cond"
+    Type: "String"
+    Default: "LessThanThreshold"
+
+  LoadDownThreshold:
+    Description: "Load Down Threshold"
+    Type: "String"
+    Default: "3"
+
+  LoadUpCond:
+    Description: "Load Up Cond"
+    Type: "String"
+    Default: "GreaterThanThreshold"
+
+  LoadUpThreshold:
+    Description: "Load Up Threshold"
+    Type: "String"
+    Default: "5"
+
+  IpAddressType:
+    Description: "IpAddress Type"
+    Type: "String"
+    Default: "ipv4"
+
+  Scheme:
+    Description: "Scheme"
+    Type: "String"
+    Default: "internet-facing"
+
+  LoadBalancerAttributesKey:
+    Description: "Load Balancer Attributes Key"
+    Type: "String"
+    Default: "idle_timeout.timeout_seconds"
+
+  LoadBalancerAttributesValue:
+    Description: "Load Balancer Attributes Value"
+    Type: "String"
+    Default: "60"
+
+  HealthCheckPath:
+    Description: "HealthCheckPath"
+    Type: "String"
+    Default: "/healthz"
+
+  HealthCheckProtocol:
+    Description: "HealthCheckProtocol"
+    Type: "String"
+    Default: "HTTP"
+
+  TargetGroupAttributesKey:
+    Description: "Target Group Attributes Key"
+    Type: "String"
+    Default: "deregistration_delay.timeout_seconds"
+
+  TargetGroupAttributesValue:
+    Description: "Target Group Attributes Value"
+    Type: "String"
+    Default: "20"
+
+  TargetType:
+    Description: "Target Type"
+    Type: "String"
+    Default: "instance"
+
+  DefaultActionsType:
+    Description: "Default Actions"
+    Type: "String"
+    Default: "forward"
+
+  HostedZoneId:
+    Description: "Hosted Zone Id"
+    Type: "String"
+    Default: "Z00638013TSAGOUVKCQL3"
+
+  HostedName:
+    Description: "Hosted Name"
+    Type: "String"
+    Default: "dev.yj1995.me"
+
+  HostedType:
+    Description: "Hosted Type"
+    Type: "String"
+    Default: "A"
+
+  MaxSize:
+    Description: "Max Size"
+    Type: "String"
+    Default: "5"
+
+  MinSize:
+    Description: "Min Size"
+    Type: "String"
+    Default: "3"
+
+  DesiredCapacity:
+    Description: "Desired Capacity"
+    Type: "String"
+    Default: "3"
+
+  HealthCheckType:
+    Description: "Health Check Type"
+    Type: "String"
+    Default: "EC2"
+
 Resources:
   # Create VPC
   MyVPC:
@@ -420,23 +560,23 @@ Resources:
         - IpProtocol: tcp
           FromPort: !Ref VirtualPortNo
           ToPort: !Ref VirtualPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
         - IpProtocol: tcp
           FromPort: !Ref PostGresPortNo
           ToPort: !Ref PostGresPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
         - IpProtocol: tcp
           FromPort: !Ref NodePortNo
           ToPort: !Ref NodePortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
         - IpProtocol: tcp
           FromPort: !Ref HttpPortNo
           ToPort: !Ref HttpPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
         - IpProtocol: tcp
           FromPort: !Ref SSHPortNo
           ToPort: !Ref SSHPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: !Ref HttpPortNo
@@ -470,57 +610,235 @@ Resources:
         - Key: Name
           Value: database
 
-  # Create EC2 Instance
-  MyEC2Instance:
-    Type: AWS::EC2::Instance
+  # Create Load Balancer Security Group
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      ImageId: !Ref AmiImage
-      KeyName: !Ref SSHKey
-      InstanceType: !Ref DeviceInstanceType
-      BlockDeviceMappings:
-        - DeviceName: !Ref DeviceNames
-          Ebs:
-            VolumeType: !Ref DeviceVolumeType
-            DeleteOnTermination: !Ref DeviceDeleteOnTermination
-            VolumeSize: !Ref DeviceVolumeSize
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      SubnetId: !Ref PublicSubnet1
-      IamInstanceProfile: !Ref RoleInstanceProfile
-      UserData:
-        Fn::Base64:
-          Fn::Sub:
-            - |
-              #!/bin/bash
-              cat > /etc/environment << 'EOF'
-              DB_USERNAME=${DatabaseUser}
-              DB_NAME=${DatabaseName}
-              DB_PASSWORD=${DatabasePassword}
-              DB_HOSTNAME=${HostName}
-              S3_BUCKET=${S3Bucket}
-              PORT=${PortNo}
-              AWS_REGION=${region}
-              EOF
+      GroupDescription: Allow http to client host
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref VirtualPortNo
+          ToPort: !Ref VirtualPortNo
+          CidrIp: !Ref DestinationCidrBlockPublic
+        - IpProtocol: tcp
+          FromPort: !Ref HttpPortNo
+          ToPort: !Ref HttpPortNo
+          CidrIp: !Ref DestinationCidrBlockPublic
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: !Ref DestinationCidrBlockPublic
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: load balancer
 
-              cat > /etc/profile.d/load_env.sh << 'EOF'
-              export DB_USERNAME=${DatabaseUser}
-              export DB_NAME=${DatabaseName}
-              export DB_PASSWORD=${DatabasePassword}
-              export DB_HOSTNAME=${HostName}
-              export S3_BUCKET=${S3Bucket}
-              export PORT=${PortNo}
-              export AWS_REGION=${region}
-              sudo systemctl start nodeApi.service
-              EOF
-            - {
-                DatabaseName: !Ref DatabaseName,
-                DatabaseUser: !Ref DatabaseUser,
-                DatabasePassword: !Ref DatabasePassword,
-                S3Bucket: !Ref S3Bucket,
-                HostName: !GetAtt DatabaseInstance.Endpoint.Address,
-                PortNo: !Ref PostGresPortNo,
-                region: !Ref BucketRegion,
-              }
+  # Auto Scaling Group EC2 Template
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-LaunchTemplate
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: !Ref DeviceNames
+            Ebs:
+              VolumeType: !Ref DeviceVolumeType
+              DeleteOnTermination: !Ref DeviceDeleteOnTermination
+              VolumeSize: !Ref DeviceVolumeSize
+        ImageId: !Ref AmiImage
+        InstanceType: !Ref DeviceInstanceType
+        KeyName: !Ref SSHKey
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: true
+            DeleteOnTermination: true
+            Groups:
+              - !Ref InstanceSecurityGroup
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - RoleInstanceProfile
+            - Arn
+        UserData:
+          Fn::Base64:
+            Fn::Sub:
+              - |
+                #!/bin/bash
+                cat > /etc/environment << 'EOF'
+                DB_USERNAME=${DatabaseUser}
+                DB_NAME=${DatabaseName}
+                DB_PASSWORD=${DatabasePassword}
+                DB_HOSTNAME=${HostName}
+                S3_BUCKET=${S3Bucket}
+                PORT=${PortNo}
+                AWS_REGION=${region}
+                EOF
+
+                cat > /etc/profile.d/load_env.sh << 'EOF'
+                export DB_USERNAME=${DatabaseUser}
+                export DB_NAME=${DatabaseName}
+                export DB_PASSWORD=${DatabasePassword}
+                export DB_HOSTNAME=${HostName}
+                export S3_BUCKET=${S3Bucket}
+                export PORT=${PortNo}
+                export AWS_REGION=${region}
+
+                sleep 5
+
+                sudo systemctl start nodeApi.service
+                EOF
+              - {
+                  DatabaseName: !Ref DatabaseName,
+                  DatabaseUser: !Ref DatabaseUser,
+                  DatabasePassword: !Ref DatabasePassword,
+                  S3Bucket: !Ref S3Bucket,
+                  HostName: !GetAtt DatabaseInstance.Endpoint.Address,
+                  PortNo: !Ref PostGresPortNo,
+                  region: !Ref BucketRegion,
+                }
+
+  # Auto Scaling Group
+  ASGWebApp:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub ${AWS::StackName}-ASG
+      AvailabilityZones:
+        - !Select [0, !GetAZs ""]
+        - !Select [1, !GetAZs ""]
+        - !Select [2, !GetAZs ""]
+      Cooldown: !Ref CooldownPeriod
+      MaxSize: !Ref MaxSize
+      MinSize: !Ref MinSize
+      DesiredCapacity: !Ref DesiredCapacity
+      HealthCheckGracePeriod: 90
+      HealthCheckType: !Ref HealthCheckType
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ASGLaunchTemplate
+        Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Application
+          Value: WebApp
+          PropagateAtLaunch: true
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ASG
+          PropagateAtLaunch: true
+      TargetGroupARNs:
+        - !Ref LoadBalancerTargetGroup
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+
+  # ASG Scale Down Policy
+  ASGScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ASGWebApp
+      AdjustmentType: !Ref AdjustmentType
+      Cooldown: !Ref CooldownPeriod
+      ScalingAdjustment: -1
+
+  ASGScaleDownAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: cloudwatchAlarmDown
+      EvaluationPeriods: !Ref EvaluationPeriods
+      Statistic: !Ref Statistic
+      Threshold: !Ref LoadDownThreshold
+      AlarmDescription: Scale down alarm when CPU Utilization < 3% for 1 minutes
+      Period: !Ref Period
+      AlarmActions:
+        - !Ref ASGScaleDownPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref ASGWebApp
+      Namespace: !Ref Namespace
+      ComparisonOperator: !Ref LoadDownCond
+      MetricName: !Ref MetricName
+
+  # ASG Scale Up Policy
+  ASGScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ASGWebApp
+      AdjustmentType: !Ref AdjustmentType
+      Cooldown: !Ref CooldownPeriod
+      ScalingAdjustment: 1
+
+  ASGScaleUpAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: cloudwatchAlarmUp
+      EvaluationPeriods: !Ref EvaluationPeriods
+      Statistic: !Ref Statistic
+      Threshold: !Ref LoadUpThreshold
+      AlarmDescription: Scale up alarm when CPU Utilization > 5% for 1 minutes
+      Period: !Ref Period
+      AlarmActions:
+        - !Ref ASGScaleUpPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref ASGWebApp
+      Namespace: !Ref Namespace
+      ComparisonOperator: !Ref LoadUpCond
+      MetricName: !Ref MetricName
+
+  # Load Balancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: !Ref IpAddressType
+      LoadBalancerAttributes:
+        - Key: !Ref LoadBalancerAttributesKey
+          Value: !Ref LoadBalancerAttributesValue
+      Name: !Sub ${AWS::StackName}-LoadBalancer
+      Scheme: !Ref Scheme
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      Tags:
+        - Key: Application
+          Value: WebApp
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - LoadBalancer
+
+  # Load Balancer Target Group
+  LoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref MyVPC
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckPort: !Ref NodePortNo
+      HealthCheckProtocol: !Ref HealthCheckProtocol
+      HealthCheckTimeoutSeconds: 60
+      HealthyThresholdCount: 2
+      IpAddressType: !Ref IpAddressType
+      Name: !Sub ${AWS::StackName}-LoadBalancerTargetGroup
+      Port: !Ref NodePortNo
+      Protocol: !Ref HealthCheckProtocol
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - LoadBalancerTargetGroup
+      TargetGroupAttributes:
+        - Key: !Ref TargetGroupAttributesKey
+          Value: !Ref TargetGroupAttributesValue
+      TargetType: !Ref TargetType
+      UnhealthyThresholdCount: 2
+
+  # Load Balancer Listener
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: !Ref DefaultActionsType
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: !Ref HttpPortNo
+      Protocol: !Ref HealthCheckProtocol
 
   # Create S3 Bucket Instance
   S3Bucket:
@@ -644,6 +962,17 @@ Resources:
       Roles:
         - !Ref CreateIAMRole
 
+  # Route 53
+  LoadBalancerAlias:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref HostedName
+      Type: !Ref HostedType
+
 # Output Data
 Outputs:
   VpcId:
@@ -691,9 +1020,9 @@ Outputs:
     Description: Internet GateWay
     Value: !Ref InternetGateWay
 
-  MyEC2Instance:
-    Description: EC2 Instance
-    Value: !Ref MyEC2Instance
+  ASGLaunchTemplate:
+    Description: ASG Launch Template
+    Value: !Ref ASGLaunchTemplate
 
   InstanceSecurityGroup:
     Description: Internet GateWay
@@ -722,3 +1051,43 @@ Outputs:
   CreatePolicy:
     Description: Policy Name
     Value: !Ref CreatePolicy
+
+  LoadBalancerSecurityGroup:
+    Description: Load Balancer Security Group
+    Value: !Ref LoadBalancerSecurityGroup
+
+  ASGWebApp:
+    Description: ASG WebApp
+    Value: !Ref ASGWebApp
+
+  ASGScaleDownPolicy:
+    Description: ASG ScaleDown Policy
+    Value: !Ref ASGScaleDownPolicy
+
+  ASGScaleDownAlarm:
+    Description: ASG ScaleDown Alarm
+    Value: !Ref ASGScaleDownAlarm
+
+  ASGScaleUpPolicy:
+    Description: ASG ScaleUp Policy
+    Value: !Ref ASGScaleUpPolicy
+
+  ASGScaleUpAlarm:
+    Description: ASG ScaleUp Alarm
+    Value: !Ref ASGScaleUpAlarm
+
+  LoadBalancer:
+    Description: Load Balancer
+    Value: !Ref LoadBalancer
+
+  LoadBalancerTargetGroup:
+    Description: Load Balancer Target Group
+    Value: !Ref LoadBalancerTargetGroup
+
+  LoadBalancerListener:
+    Description: Load Balancer Listener
+    Value: !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerAlias:
+    Description: Load Balancer Alias
+    Value: !Ref LoadBalancerAlias
