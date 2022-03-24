@@ -558,37 +558,17 @@ Resources:
       GroupDescription: Allow http to client host
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: !Ref VirtualPortNo
-          ToPort: !Ref VirtualPortNo
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: !Ref PostGresPortNo
-          ToPort: !Ref PostGresPortNo
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-        - IpProtocol: tcp
           FromPort: !Ref NodePortNo
           ToPort: !Ref NodePortNo
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: !Ref HttpPortNo
-          ToPort: !Ref HttpPortNo
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
         - IpProtocol: tcp
           FromPort: !Ref SSHPortNo
           ToPort: !Ref SSHPortNo
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
       SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: !Ref HttpPortNo
-          ToPort: !Ref HttpPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
-        - IpProtocol: tcp
-          FromPort: !Ref PostGresPortNo
-          ToPort: !Ref PostGresPortNo
-          CidrIp: !Ref DestinationCidrBlockPublic
-        - IpProtocol: tcp
-          FromPort: !Ref VirtualPortNo
-          ToPort: !Ref VirtualPortNo
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
           CidrIp: !Ref DestinationCidrBlockPublic
       VpcId: !Ref MyVPC
       Tags:
