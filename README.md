@@ -20,7 +20,7 @@ Created an vpc, subnets, internet gateway, routes, security group, EC2 instance,
 * Write command ```aws s3 rm s3://bucket-name --recursive``` to delete data from s3
   
 ## Project Structure
-* *csye6225-infra.yml* : It has it's logic to create vpc, subnets, internet gateways, routes, route table,security group, Db security group, S3, RDS instance, IAM Role, Policy, EC2 instance, userData, and attachment.
+* *csye6225-infra.yml* : It has it's logic to create vpc, subnets, internet gateways, routes, route table,security group, Db security group, S3, RDS instance, IAM Role, Policy, Auto Scaling, Load Balancer, userData, and attachment.
   
 ## Teach Stack
 * AWS CloudFormation
