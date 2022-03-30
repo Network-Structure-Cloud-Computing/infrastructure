@@ -2,7 +2,7 @@
 ``CloudFormation - AWS``
 
 ## About the project
-Created an vpc, subnets, internet gateway, routes, security group, EC2 instance, and route table using aws cloudformation
+Created an vpc, subnets, internet gateway, routes, security group, EC2 instance, policies, roles, attached policies to exiting IAM user, and route table using aws cloudformation
 
 ## How To Run
 * Install and configure AWS Command Line Interface (CLI) on your development machine (laptop) from AWS Website.
@@ -12,15 +12,19 @@ Created an vpc, subnets, internet gateway, routes, security group, EC2 instance,
 * Clone the repository into your local machine using git clone command.
 * Go to your project folder using cd
 * Make a ``parameter.json`` file for configuration of the infra in which you want to build all your resources.
+* Make a ``ghparamter.json`` file for configuration of the infra in which you want to build all your resources.
 * Set ``export AWS_PROFILE=demo`` or it can be any environment of your choice  
 * Set ``export AWS_REGION=us-east-1`` or it can be any region of your choice
+* Write command ```aws cloudformation create-stack --stack-name [stack name] --template-body file://githubPolicy.yml --parameters file://ghparamter.json --capabilities CAPABILITY_NAMED_IAM``` to create stack and start the creation of the resources in aws
 * Write command ```aws cloudformation create-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json --capabilities CAPABILITY_NAMED_IAM``` to create stack and start the creation of the resources in aws
+* Write command ```aws cloudformation update-stack --stack-name [stack name] --template-body file://githubPolicy.yml --parameters file://ghparamter.json --capabilities CAPABILITY_NAMED_IAM``` to update exit stack and its resources
 * Write command ```aws cloudformation update-stack --stack-name [stack name] --template-body file://csye6225-infra.yml --parameters file://parameter.json --capabilities CAPABILITY_NAMED_IAM``` to update exit stack and its resources
 * Write command ```aws cloudformation delete-stack --stack-name [stack name] ``` to delete the stack and its resources
 * Write command ```aws s3 rm s3://bucket-name --recursive``` to delete data from s3
   
 ## Project Structure
 * *csye6225-infra.yml* : It has it's logic to create vpc, subnets, internet gateways, routes, route table,security group, Db security group, S3, RDS instance, IAM Role, Policy, Auto Scaling, Load Balancer, userData, and attachment.
+* *githubPolicy.yml* : It has it's logic to create policy and attaching in to the exiting IAM user.
   
 ## Teach Stack
 * AWS CloudFormation

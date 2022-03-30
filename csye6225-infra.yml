@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Assignment 5
+Description: Assignment 7
 
 # Parameters Reference for the Template
 Parameters:
@@ -345,6 +345,52 @@ Parameters:
     Type: "String"
     Default: "EC2"
 
+  S3BucketCodeDeployName:
+    Description: "S3 Bucket CodeDeploy Name"
+    Type: "String"
+    Default: "webappcodedeploy"
+
+  CodeDeployApplicationName:
+    Description: "Code Deploy Application Name"
+    Type: "String"
+    Default: "csye6225-webapp"
+
+  CodeDeployComputePlatform:
+    Description: "Code Deploy Compute Platform"
+    Type: "String"
+    Default: "Server"
+
+  DeployEnabled:
+    Description: "Deploy Enabled"
+    Type: "String"
+    Default: "true"
+
+  DeploymentGroupName:
+    Description: "Deployment Group Name"
+    Type: "String"
+    Default: "csye6225-webapp-deployment"
+  
+  DeploymentType:
+    Description: "Deployment Type"
+    Type: "String"
+    Default: "IN_PLACE"
+
+  DeploymentOption:
+    Description: "Deployment Option"
+    Type: "String"
+    Default: "WITH_TRAFFIC_CONTROL"
+
+  CreateIAMRoleCodeDeployRoleName:
+    Description: "Create IAM Role CodeDeploy RoleName"
+    Type: "String"
+    Default: "CodeDeployServiceRole"
+
+  CreateIAMRoleCodeDeployManagedPolicyArns:
+    Description: "Create IAM Role CodeDeploy Managed Policy Arns"
+    Type: "String"
+    Default: "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+
+
 Resources:
   # Create VPC
   MyVPC:
@@ -664,7 +710,6 @@ Resources:
                 export AWS_REGION=${region}
 
                 sleep 5
-
                 sudo systemctl start nodeApi.service
                 EOF
               - {
@@ -936,9 +981,12 @@ Resources:
               - "s3:PutObject"
               - "s3:GetObject"
               - "s3:DeleteObject"
+              - "s3:DeleteObjectVersion"
+              - "s3:GetObjectVersion"
+              - "s3:ListBucket"
             Resource:
-              - !Join ["", ["arn:aws:s3:::", !Ref S3Bucket]]
               - !Join ["", ["arn:aws:s3:::", !Ref S3Bucket, "/*"]]
+              - !Join ["", ["arn:aws:s3:::", !Ref S3BucketCodeDeployName, "/*"]]
       Roles:
         - !Ref CreateIAMRole
 
@@ -952,6 +1000,63 @@ Resources:
       HostedZoneId: !Ref HostedZoneId
       Name: !Ref HostedName
       Type: !Ref HostedType
+
+  # CodeDeploy Application
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Ref CodeDeployApplicationName
+      ComputePlatform: !Ref CodeDeployComputePlatform
+
+  # CodeDeploy Application Group
+  CodeDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref CodeDeployApplicationName
+      AutoRollbackConfiguration:
+        Enabled: !Ref DeployEnabled
+        Events:
+          - DEPLOYMENT_FAILURE
+      AutoScalingGroups:
+        - !Ref ASGWebApp
+      DeploymentConfigName: "CodeDeployDefault.AllAtOnce"
+      DeploymentGroupName: !Ref DeploymentGroupName
+      DeploymentStyle:
+        DeploymentType: !Ref DeploymentType
+        DeploymentOption: !Ref DeploymentOption
+      Ec2TagFilters:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ASG
+          Type: "KEY_AND_VALUE"        
+      LoadBalancerInfo:
+        TargetGroupInfoList:
+          - Name: !GetAtt LoadBalancerTargetGroup.TargetGroupName
+      ServiceRoleArn:
+        Fn::GetAtt: [CreateIAMRoleCodeDeploy, Arn]
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - CodeDeploymentGroup
+
+
+  CreateIAMRoleCodeDeploy:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Path: /
+      RoleName: !Ref CreateIAMRoleCodeDeployRoleName
+      Tags:
+        - Key: Name
+          Value: !Ref CreateIAMRoleCodeDeployRoleName
+      ManagedPolicyArns:
+        - !Ref CreateIAMRoleCodeDeployManagedPolicyArns
 
 # Output Data
 Outputs:
@@ -1071,3 +1176,16 @@ Outputs:
   LoadBalancerAlias:
     Description: Load Balancer Alias
     Value: !Ref LoadBalancerAlias
+  
+  CodeDeployApplication:
+    Description: Code Deploy Application
+    Value: !Ref CodeDeployApplication
+  
+  CodeDeploymentGroup:
+    Description: Code Deployment Group
+    Value: !Ref CodeDeploymentGroup
+  
+  CreateIAMRoleCodeDeploy:
+    Description: Create IAM Role CodeDeploy
+    Value: !Ref CreateIAMRoleCodeDeploy
+
