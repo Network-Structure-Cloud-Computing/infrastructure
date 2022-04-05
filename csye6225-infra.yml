@@ -390,6 +390,11 @@ Parameters:
     Type: "String"
     Default: "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
 
+  CloudWatchAgentServerPolicyArns:
+    Description: "Create IAM Role Cloud Watch Agent Server Policy Arns"
+    Type: "String"
+    Default: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+
 
 Resources:
   # Create VPC
@@ -960,6 +965,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref IAMRoleName
+      ManagedPolicyArns:
+          - !Ref CloudWatchAgentServerPolicyArns
 
   # Create IAM Role Profile
   RoleInstanceProfile:
