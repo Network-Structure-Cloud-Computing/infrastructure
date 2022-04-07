@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Assignment 7
+Description: Assignment 8
 
 # Parameters Reference for the Template
 Parameters:
@@ -389,6 +389,11 @@ Parameters:
     Description: "Create IAM Role CodeDeploy Managed Policy Arns"
     Type: "String"
     Default: "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+
+  CloudWatchAgentServerPolicyArns:
+    Description: "Create IAM Role Cloud Watch Agent Server Policy Arns"
+    Type: "String"
+    Default: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 
 
 Resources:
@@ -960,6 +965,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref IAMRoleName
+      ManagedPolicyArns:
+          - !Ref CloudWatchAgentServerPolicyArns
 
   # Create IAM Role Profile
   RoleInstanceProfile:
