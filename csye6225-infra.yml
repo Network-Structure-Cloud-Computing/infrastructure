@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Assignment 7
+Description: Assignment 8
 
 # Parameters Reference for the Template
 Parameters:
