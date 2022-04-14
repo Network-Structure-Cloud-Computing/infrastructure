@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Assignment 7
+Description: Assignment 9
 
 Parameters:
   CreateIAMPolicyS3:
@@ -31,6 +31,14 @@ Parameters:
     Description: S3 Bucket CodeDeploy Name"
     Type: "String"
     Default: "webappcodedeploy"
+  S3BucketServerless:
+    Description: S3 Bucket CodeDeploy Name"
+    Type: "String"
+    Default: "serverlesslambdasnsbucket"
+  LambdaFunctionName:
+    Description: "Lambda Function"
+    Type: "String"
+    Default: "lambda_called_from_sns"
   IAMUserName:
     Description: S3 Bucket CodeDeploy Name"
     Type: "String"
@@ -56,6 +64,8 @@ Resources:
             Resource:
               - !Join ["", ["arn:aws:s3:::", !Ref S3BucketCodeDeployName]]
               - !Join ["", ["arn:aws:s3:::", !Ref S3BucketCodeDeployName, "/*"]]
+              - !Join ["", ["arn:aws:s3:::", !Ref S3BucketServerless]]
+              - !Join ["", ["arn:aws:s3:::", !Ref S3BucketServerless, "/*"]]
       Users:
         - !Ref IAMUserName
 
@@ -133,6 +143,21 @@ Resources:
               Resource: "*"
         Users:
           - !Ref IAMUserName
+   
+   CreatePolicy3:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "Update-lambda-function"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "lambda:UpdateFunctionCode"
+            Resource:
+              - !Sub arn:aws:lambda:${AwsRegion}:${AwsAccountId}:function:${LambdaFunctionName}
+      Users:
+        - !Ref IAMUserName
 
 Outputs:
    CreatePolicy:
