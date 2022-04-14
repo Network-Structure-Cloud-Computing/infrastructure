@@ -438,7 +438,6 @@ Parameters:
     Description: "AWS Lambda Execute Policy Arns"
     Type: "String"
     Default: "arn:aws:iam::aws:policy/AWSLambdaExecute"
-  
 
 Resources:
   # Create VPC
