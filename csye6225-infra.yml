@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Assignment 7
+Description: Assignment 9
 
 # Parameters Reference for the Template
 Parameters:
@@ -390,6 +390,55 @@ Parameters:
     Type: "String"
     Default: "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
 
+  CloudWatchAgentServerPolicyArns:
+    Description: "Create IAM Role Cloud Watch Agent Server Policy Arns"
+    Type: "String"
+    Default: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  MySNSTopic:
+    Description: "IAM Policy Name"
+    Type: "String"
+    Default: "MySNSTopic"
+  AwsAccountId:
+    Description: "ID"
+    Type: "String"
+    Default: "262304150223"
+  S3BucketServerless:
+    Description: "S3 Bucket Serverless Name"
+    Type: "String"
+    Default: "serverlesslambdasnsbucket"
+  LambdaFunctionName:
+    Description: "Lambda Function"
+    Type: "String"
+    Default: "lambda_called_from_sns"
+  SNSLambdaRoleName:
+    Description: "SNS Role Name"
+    Type: "String"
+    Default: "SNSLambda"
+  LambdaPolicyName:
+    Description: "Lambda Policy Name"
+    Type: "String"
+    Default: "lambda_policy"
+  DynamoDBTableName:
+    Description: "DynamoDB Table Name"
+    Type: "String"
+    Default: "dynamo_db"
+  DynamoDBTableName1:
+    Description: "DynamoDB Table Name"
+    Type: "String"
+    Default: "dynamo_email"
+  MailId:
+    Description: "MailId"
+    Type: "String"
+    Default: "noreply"
+  DomainName:
+    Description: "Domain Name"
+    Type: "String"
+    Default: "prod.yj1995.me"
+  AWSLambdaExecutePolicyArns:
+    Description: "AWS Lambda Execute Policy Arns"
+    Type: "String"
+    Default: "arn:aws:iam::aws:policy/AWSLambdaExecute"
+  
 
 Resources:
   # Create VPC
@@ -698,6 +747,9 @@ Resources:
                 S3_BUCKET=${S3Bucket}
                 PORT=${PortNo}
                 AWS_REGION=${region}
+                TOPIC_ARN=${topicArn}
+                DOMAIN_NAME=${domainName}
+                DYNAMODB_NAME=${dynamoDBName}
                 EOF
 
                 cat > /etc/profile.d/load_env.sh << 'EOF'
@@ -720,6 +772,9 @@ Resources:
                   HostName: !GetAtt DatabaseInstance.Endpoint.Address,
                   PortNo: !Ref PostGresPortNo,
                   region: !Ref BucketRegion,
+                  topicArn: !Ref MySNSTopics,
+                  domainName: !Ref DomainName,
+                  dynamoDBName: !Ref DynamoDBTableName1
                 }
 
   # Auto Scaling Group
@@ -960,6 +1015,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref IAMRoleName
+      ManagedPolicyArns:
+          - !Ref CloudWatchAgentServerPolicyArns
 
   # Create IAM Role Profile
   RoleInstanceProfile:
@@ -987,6 +1044,7 @@ Resources:
             Resource:
               - !Join ["", ["arn:aws:s3:::", !Ref S3Bucket, "/*"]]
               - !Join ["", ["arn:aws:s3:::", !Ref S3BucketCodeDeployName, "/*"]]
+              - !Join ["", ["arn:aws:s3:::", !Ref S3BucketServerless, "/*"]]
       Roles:
         - !Ref CreateIAMRole
 
@@ -1037,7 +1095,6 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} - CodeDeploymentGroup
 
-
   CreateIAMRoleCodeDeploy:
     Type: "AWS::IAM::Role"
     Properties:
@@ -1057,6 +1114,217 @@ Resources:
           Value: !Ref CreateIAMRoleCodeDeployRoleName
       ManagedPolicyArns:
         - !Ref CreateIAMRoleCodeDeployManagedPolicyArns
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt
+            - SNSLambdaRole
+            - Arn
+      FunctionName: !Ref LambdaFunctionName
+      Code:
+        S3Bucket: !Ref S3BucketServerless
+        S3Key: index.zip
+      Runtime: nodejs12.x
+      Timeout: 5
+  
+  SNSLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: SNSLambda
+      AssumeRolePolicyDocument:
+        {
+          "Statement":
+            [
+              {
+                "Effect": "Allow",
+                "Principal": { "Service": ["lambda.amazonaws.com"] },
+                "Action": ["sts:AssumeRole"],
+                "Sid": "",
+              },
+            ],
+        }
+      RoleName: !Ref SNSLambdaRoleName
+      Tags:
+        - Key: Name
+          Value: !Ref SNSLambdaRoleName
+      ManagedPolicyArns:
+        - !Ref AWSLambdaExecutePolicyArns
+
+  LambdaPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Ref LambdaPolicyName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+            Resource:
+              - !Sub arn:aws:logs:${BucketRegion}:${AwsAccountId}:*
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource:
+              - !Sub arn:aws:logs:${BucketRegion}:${AwsAccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*
+          - Effect: Allow
+            Action:
+              - "dynamodb:GetItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:Scan"
+              - "dynamodb:DeleteItem"
+            Sid: "LambdaDynamoDBAccess"
+            Resource:
+              - !Sub "arn:aws:dynamodb:${BucketRegion}:${AwsAccountId}:table/${DynamoDBTableName}"
+              - !Sub "arn:aws:dynamodb:${BucketRegion}:${AwsAccountId}:table/${DynamoDBTableName1}"
+          - Effect: Allow
+            Action:
+              - "ses:VerifyEmailAddress"
+              - "ses:SendEmail"
+              - "ses:SendRawEmail"
+            Sid: "LambdaSESAccess"
+            Resource:
+              - "*"
+            Condition : { "StringEquals" : {  "ses:FromAddress": !Sub "${MailId}@${DomainName}" }}
+      Roles:
+        - !Ref SNSLambdaRole
+
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamoDBTableName
+      BillingMode: PROVISIONED
+      AttributeDefinitions:
+        - AttributeName: token
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: token
+          KeyType: "HASH"         
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      ProvisionedThroughput:
+        ReadCapacityUnits: 20
+        WriteCapacityUnits: 20
+  DynamoDBTable1:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamoDBTableName1
+      BillingMode: PROVISIONED
+      AttributeDefinitions:
+        - AttributeName: username
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: username
+          KeyType: "HASH"         
+      ProvisionedThroughput:
+        ReadCapacityUnits: 20
+        WriteCapacityUnits: 20
+          
+  DynamoDbPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: dynamoDbPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "dynamodb:List*"
+              - "dynamodb:DescribeReservedCapacity*"
+              - "dynamodb:DescribeLimits"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - "dynamodb:BatchGet*"
+              - "dynamodb:DescribeStream"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:GetItem"
+              - "dynamodb:Query"
+              - "dynamodb:Scan"
+              - "dynamodb:BatchWrite*"
+              - "dynamodb:CreateTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:PutItem"
+            Resource:
+              - !Sub arn:aws:dynamodb:${BucketRegion}:${AwsAccountId}:table/${DynamoDBTableName}
+              - !Sub arn:aws:dynamodb:${BucketRegion}:${AwsAccountId}:table/${DynamoDBTableName1}
+      Roles:
+        - !Ref CreateIAMRole
+  
+  MySNSTopics:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !GetAtt LambdaFunction.Arn
+          Protocol: lambda
+      TopicName: !Ref MySNSTopic
+  
+  TopicPolicy:
+   Type: AWS::SNS::TopicPolicy
+   Properties: 
+      PolicyDocument: {
+        "Version": "2008-10-17",
+        "Id": "__default_policy_ID",
+        "Statement": [
+          {
+            "Sid": "__default_statement_ID",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "*"
+            },
+            "Action": [
+              "SNS:Publish",
+              "SNS:RemovePermission",
+              "SNS:SetTopicAttributes",
+              "SNS:DeleteTopic",
+              "SNS:ListSubscriptionsByTopic",
+              "SNS:GetTopicAttributes",
+              "SNS:AddPermission",
+              "SNS:Subscribe"
+            ],
+            "Resource": !Sub "arn:aws:sns:${BucketRegion}:${AwsAccountId}:${MySNSTopic}",
+            "Condition": {
+              "StringEquals": {
+                "AWS:SourceOwner": !Ref AwsAccountId
+              }
+            }
+          }
+        ]
+      }
+      Topics: 
+        - !Ref MySNSTopics
+  
+  LambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: "lambda:InvokeFunction"
+        Principal: "sns.amazonaws.com"
+        FunctionName: !Sub arn:aws:lambda:${BucketRegion}:${AwsAccountId}:function:${LambdaFunctionName}
+        SourceAccount: !Ref AwsAccountId
+        SourceArn: !Ref MySNSTopics
+
+  SNSPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: sns_iam_policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "SNS:Publish"
+            Resource:
+              - !Ref MySNSTopics
+      Roles:
+        - !Ref CreateIAMRole
 
 # Output Data
 Outputs:
@@ -1189,3 +1457,34 @@ Outputs:
     Description: Create IAM Role CodeDeploy
     Value: !Ref CreateIAMRoleCodeDeploy
 
+  LambdaFunction:
+    Description: Lambda Function
+    Value: !Ref LambdaFunction
+
+  SNSLambdaRole:
+    Description: SNS Lambda Role
+    Value: !Ref SNSLambdaRole
+
+  LambdaPolicy:
+    Description: Lambda Policy
+    Value: !Ref LambdaPolicy
+
+  DynamoDBTable:
+    Description: DynamoDB Table
+    Value: !Ref DynamoDBTable
+
+  DynamoDbPolicy:
+    Description: DynamoDb Policy
+    Value: !Ref DynamoDbPolicy
+
+  MySNSTopics:
+    Description: My SNS Topics
+    Value: !Ref MySNSTopics
+
+  TopicPolicy:
+    Description: Topic Policy
+    Value: !Ref TopicPolicy
+    
+  LambdaInvokePermission:
+    Description: Topic Policys
+    Value: !Ref TopicPolicy
