@@ -150,9 +150,9 @@ Parameters:
 
   DatabaseInstanceClass:
     AllowedValues:
-      - db.t2.micro
+      - db.t3.micro
     ConstraintDescription: Must select a valid database instance type
-    Default: "db.t2.micro"
+    Default: "db.t3.micro"
     Description: The database instance type
     Type: String
 
@@ -438,6 +438,18 @@ Parameters:
     Description: "AWS Lambda Execute Policy Arns"
     Type: "String"
     Default: "arn:aws:iam::aws:policy/AWSLambdaExecute"
+  CertificateArns:
+    Description: "Certificate ARN"
+    Type: "String"
+    Default: ""
+  ProtocolName:
+    Description: "Protocol Name"
+    Type: "String"
+    Default: "HTTPS"
+  UserName:
+    Description: "User Name"
+    Type: "String"
+    Default: ""
 
 Resources:
   # Create VPC
@@ -717,9 +729,13 @@ Resources:
         BlockDeviceMappings:
           - DeviceName: !Ref DeviceNames
             Ebs:
+              Encrypted: true
               VolumeType: !Ref DeviceVolumeType
               DeleteOnTermination: !Ref DeviceDeleteOnTermination
               VolumeSize: !Ref DeviceVolumeSize
+              KmsKeyId: !GetAtt 
+                      - myEBSKey
+                      - Arn
         ImageId: !Ref AmiImage
         InstanceType: !Ref DeviceInstanceType
         KeyName: !Ref SSHKey
@@ -916,8 +932,10 @@ Resources:
         - Type: !Ref DefaultActionsType
           TargetGroupArn: !Ref LoadBalancerTargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: !Ref HttpPortNo
-      Protocol: !Ref HealthCheckProtocol
+      Certificates:
+        - CertificateArn: !Ref CertificateArns
+      Port: !Ref VirtualPortNo
+      Protocol: !Ref ProtocolName
 
   # Create S3 Bucket Instance
   S3Bucket:
@@ -989,7 +1007,11 @@ Resources:
       MasterUsername: !Ref DatabaseUser
       MasterUserPassword: !Ref DatabasePassword
       MultiAZ: !Ref MultiAZDatabase
+      StorageEncrypted: true
       DBParameterGroupName: !Ref RDSDBParameterGroup
+      KmsKeyId: !GetAtt
+            - myRdsKey
+            - Arn
       VPCSecurityGroups:
         - !Ref DBSecurityGroup
 
@@ -1324,6 +1346,150 @@ Resources:
               - !Ref MySNSTopics
       Roles:
         - !Ref CreateIAMRole
+
+  myRdsKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An RDS KMS key
+      PendingWindowInDays: 10
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Id: myEBSKey
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Action:
+              - "kms:*"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Action:
+              - "kms:Create*"
+              - "kms:Enable*"
+              - "kms:Describe*"
+              - "kms:List*"
+              - "kms:Put*"
+              - "kms:Update*"
+              - "kms:Revoke*"
+              - "kms:Disable*"
+              - "kms:Get*"
+              - "kms:Delete*"
+              - "kms:TagResource"
+              - "kms:UntagResource"
+              - "kms:ScheduleKeyDeletion"
+              - "kms:CancelKeyDeletion"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+            Resource:
+              - '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Action:
+             - 'kms:DescribeKey'
+             - 'kms:Encrypt'
+             - 'kms:Decrypt'
+             - 'kms:ReEncrypt*'
+             - 'kms:GenerateDataKey'
+             - 'kms:GenerateDataKeyWithoutPlaintext'
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+          - Sid: Grant Permission
+            Effect: Allow
+            Action:
+              - "kms:CreateGrant"
+              - "kms:ListGrants"
+              - "kms:RevokeGrant"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+            Condition: {"Bool": {"kms:GrantIsForAWSResource": "true"}}
+
+  myEBSKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An RDS KMS key
+      PendingWindowInDays: 10
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Id: myEBSKey
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Action:
+              - "kms:*"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Action:
+              - "kms:Create*"
+              - "kms:Enable*"
+              - "kms:Describe*"
+              - "kms:List*"
+              - "kms:Put*"
+              - "kms:Update*"
+              - "kms:Revoke*"
+              - "kms:Disable*"
+              - "kms:Get*"
+              - "kms:Delete*"
+              - "kms:TagResource"
+              - "kms:UntagResource"
+              - "kms:ScheduleKeyDeletion"
+              - "kms:CancelKeyDeletion"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+            Resource:
+              - '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Action:
+             - 'kms:DescribeKey'
+             - 'kms:Encrypt'
+             - 'kms:Decrypt'
+             - 'kms:ReEncrypt*'
+             - 'kms:GenerateDataKey'
+             - 'kms:GenerateDataKeyWithoutPlaintext'
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+          - Sid: Grant Permission
+            Effect: Allow
+            Action:
+              - "kms:CreateGrant"
+              - "kms:ListGrants"
+              - "kms:RevokeGrant"
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AwsAccountId}:user/${UserName}
+                - !Sub arn:aws:iam::${AwsAccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+                - !Sub arn:aws:iam::${AwsAccountId}:root
+            Resource:
+              - '*'
+            Condition: {"Bool": {"kms:GrantIsForAWSResource": "true"}}
 
 # Output Data
 Outputs:
